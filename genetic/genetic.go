@@ -75,19 +75,19 @@ func mutateParent(original []byte, parentA []byte, parentB []byte) Child {
 	return Child{genes: child, fitness: GEN}
 }
 
-func createFirstGeneration(original []byte) [][]byte {
-	generation := make([][]byte, GEN)
+func createFirstGeneration(original []byte) []Child {
+	generation := make([]Child, GEN)
 	for i := 0; i < GEN; i++ {
-		generation[i] = generateParent(original)
+		generation[i].genes = generateParent(original)
 	}
 	return generation
 }
 
-func getAllFitness(gen [][]byte) []Child {
+func getAllFitness(gen []Child) []Child {
 	var children []Child
 	for i := 0; i < GEN; i++ {
-		errorCount := getFitness(gen[i])
-		children = append(children, Child{genes: gen[i], fitness: errorCount})
+		errorCount := getFitness(gen[i].genes)
+		children = append(children, Child{genes: gen[i].genes, fitness: errorCount})
 	}
 	return children
 }
@@ -98,7 +98,7 @@ func (a ByFit) Len() int           { return len(a) }
 func (a ByFit) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByFit) Less(i, j int) bool { return a[i].fitness < a[j].fitness }
 
-func sortByFitness(gen [][]byte) []Child {
+func sortByFitness(gen []Child) []Child {
 	children := getAllFitness(gen)
 	sort.Sort(ByFit(children))
 
@@ -125,7 +125,7 @@ func Solve(original []byte) []byte {
 	for children[0].fitness != 0 && numOfGen < 100 {
 		numOfGen++
 		children = createNextGeneration(original, children)
-		children = sortByFitness(convChildToByte(children))
+		children = sortByFitness(children)
 		printTopOfGen(children, numOfGen)
 	}
 
