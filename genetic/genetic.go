@@ -62,6 +62,7 @@ func getFitness(candidate [][]byte) int {
 
 func generateParent(original [][]byte) [][]byte {
 	parent := make([][]byte, len(original))
+
 	for i := 0; i < len(original); i++ {
 		parent[i] = make([]byte, len(original))
 		for j := 0; j < len(original); j++ {
@@ -80,12 +81,11 @@ func mutateParent(original [][]byte, parentA [][]byte, parentB [][]byte) Child {
 	for i := 0; i < len(original); i++ {
 		child[i] = make([]byte, len(original))
 		for j := 0; j < len(original); j++ {
-
 			if original[i][j] == 0 {
-				parentchoice := rand.Intn(11)
-				if parentchoice == 0 {
+				parentchoice := rand.Intn(12)
+				if parentchoice >= 10 {
 					child[i][j] = byte(rand.Intn(len(original)) + 1)
-				} else if parentchoice <= 5 {
+				} else if parentchoice < 5 {
 					child[i][j] = parentA[i][j]
 				} else {
 					child[i][j] = parentB[i][j]
@@ -106,11 +106,18 @@ func createFirstGeneration(original [][]byte) []Child {
 	return generation
 }
 
+func getChild(genes [][]byte, childch chan Child) {
+	errorCount := getFitness(genes)
+	childch <- Child{genes: genes, fitness: errorCount}
+}
+
 func getAllFitness(gen []Child) []Child {
 	var children []Child
+	childch := make(chan Child)
 	for i := 0; i < GEN; i++ {
-		errorCount := getFitness(gen[i].genes)
-		children = append(children, Child{genes: gen[i].genes, fitness: errorCount})
+		go getChild(gen[i].genes, childch)
+		child := <-childch
+		children = append(children, child)
 	}
 	return children
 }
@@ -124,18 +131,24 @@ func (a ByFit) Less(i, j int) bool { return a[i].fitness < a[j].fitness }
 func sortByFitness(gen []Child) []Child {
 	children := getAllFitness(gen)
 	sort.Sort(ByFit(children))
-
 	return children
 }
 
 func createNextGeneration(original [][]byte, children []Child) []Child {
-	for i := GEN / 2; i < GEN; i++ {
-		children[i] = mutateParent(original, children[i-(GEN/2)].genes, children[i-(GEN/2-1)].genes)
+	for i := GEN / 4; i < GEN-(GEN/4); i++ {
+		pa := i - GEN/4
+		pb := GEN - GEN/4 - i
+		children[i] = mutateParent(original, children[pa].genes, children[pb].genes)
 	}
+	for i := GEN - (GEN / 4); i < GEN; i++ {
+		children[i].genes = generateParent(original)
+		children[i].fitness = GEN
+	}
+
 	return children
 }
 
-var GEN int = 1000
+var GEN int = 10000
 
 func Solve(original [][]byte) [][]byte {
 	//	bestFitness := 0
@@ -148,8 +161,8 @@ func Solve(original [][]byte) [][]byte {
 	var numOfGen int
 	for children[0].fitness != 0 && numOfGen < 10000 {
 		numOfGen++
-		children = createNextGeneration(original, children)
 		children = sortByFitness(children)
+		children = createNextGeneration(original, children)
 		printTopOfGen(children, numOfGen)
 	}
 
