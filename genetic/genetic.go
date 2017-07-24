@@ -19,8 +19,8 @@ func printChild(child Child) {
 	fmt.Printf("ERRORS: %d\n", child.fitness)
 }
 
-func printTopOfGen(children []Child, numOfGen int) {
-	fmt.Printf("**** GENERATION: %d ****\n", numOfGen)
+func printTopOfGen(children []Child, numOfGen int, genID rune) {
+	fmt.Printf("**** %c :: GENERATION: %d ****\n", genID, numOfGen)
 	for i := 0; i < 3; i++ {
 		printChild(children[i])
 	}
@@ -127,14 +127,14 @@ func mutateParent(original [][]byte, parentA [][]byte, parentB [][]byte) Child {
 			}
 		}
 	}
-	return Child{genes: child, fitness: GEN}
+	return Child{genes: child, fitness: POP}
 }
 
 func createFirstGeneration(original [][]byte) []Child {
-	generation := make([]Child, GEN)
+	generation := make([]Child, POP)
 	values := createValues(original)
 
-	for i := 0; i < GEN; i++ {
+	for i := 0; i < POP; i++ {
 		generation[i].genes = generateParent(original, values)
 	}
 	return generation
@@ -148,7 +148,7 @@ func getChild(genes [][]byte, childch chan Child) {
 func getAllFitness(gen []Child) []Child {
 	var children []Child
 	childch := make(chan Child)
-	for i := 0; i < GEN; i++ {
+	for i := 0; i < POP; i++ {
 		go getChild(gen[i].genes, childch)
 		child := <-childch
 		children = append(children, child)
@@ -170,36 +170,64 @@ func sortByFitness(gen []Child) []Child {
 
 func createNextGeneration(original [][]byte, children []Child) []Child {
 	values := createValues(original)
-	var nextGen []Child
-	for i := (GEN / 3) * 2; i < GEN; i++ {
-		ch Child
-		children[i].genes = generateParent(original, values)
-		children[i].fitness = GEN
-		nex
-	}
-	for i := GEN / 4; i < GEN; i++ {
-		pa := i % (GEN / 4)
-		pb := i - rand.Intn(5)
+
+	for i := POP / 4; i < POP; i++ {
+		pa := i % (POP / 2)
+		pb := rand.Intn(POP)
 		children[i] = mutateParent(original, children[pa].genes, children[pb].genes)
+	}
+	for i := (POP / 3) * 2; i < POP; i++ {
+		children[i].genes = generateParent(original, values)
+		children[i].fitness = POP
 	}
 	return children
 }
 
-var GEN int = 10000
+var POP int = 10000
+var GEN int = 5000
+
+func generateSubPopulation(original [][]byte, populationSize int, subPupID rune, genReq int, popID rune) chan []Child{
+	chChild := make(chan []Child, populationSize)
+	children:=sortByFitness(createFirstGeneration(original))
+	numOfSubGen:=0
+	for children[0].fitness != 0 && numOfSubGen < genReq {
+		numOfSubGen++;
+		children = sortByFitness(children)
+		children = createNextGeneration(original, children)
+		printTopOfGen(children, numOfSubGen, popID)
+	}
+	for _,val := range children{
+		chChild <- val
+	}
+	children = sortByFitness(children)
+	return chChild
+}
 
 func Solve(original [][]byte) [][]byte {
 	rand.Seed(time.Now().UnixNano())
 	generation := createFirstGeneration(original)
 
 	children := sortByFitness(generation)
-	printTopOfGen(children, 0)
+	printTopOfGen(children, 0, '0')
 
 	var numOfGen int
-	for children[0].fitness != 0 && numOfGen < 100000 {
+	subPopID:='A'
+	for children[0].fitness != 0 && numOfGen < 10 {
 		numOfGen++
+		fmt.Printf("\nSub-generation: %c\n", subPopID)
+		childChan:= generateSubPopulation(original, GEN, subPopID,100, subPopID)[:GEN/10]
+		for val := range childChan {
+			children = append(children, val)
+		}
+		children= sortByFitness(children)
+		subPopID++
+	}
+	numOfGen=0
+	for children[0].fitness!=0 && numOfGen<GEN/2{
+		numOfGen++;
 		children = sortByFitness(children)
 		children = createNextGeneration(original, children)
-		printTopOfGen(children, numOfGen)
+		printTopOfGen(children, numOfGen, 'X')
 	}
 
 	return original
