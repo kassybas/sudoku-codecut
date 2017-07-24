@@ -170,19 +170,22 @@ func sortByFitness(gen []Child) []Child {
 
 func createNextGeneration(original [][]byte, children []Child) []Child {
 	values := createValues(original)
+	var nextGen []Child
 	for i := (GEN / 3) * 2; i < GEN; i++ {
+		ch Child
 		children[i].genes = generateParent(original, values)
 		children[i].fitness = GEN
+		nex
 	}
 	for i := GEN / 4; i < GEN; i++ {
 		pa := i % (GEN / 4)
-		pb := rand.Intn(GEN)
+		pb := i - rand.Intn(5)
 		children[i] = mutateParent(original, children[pa].genes, children[pb].genes)
 	}
 	return children
 }
 
-var GEN int = 100000
+var GEN int = 10000
 
 func Solve(original [][]byte) [][]byte {
 	rand.Seed(time.Now().UnixNano())
